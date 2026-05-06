@@ -126,47 +126,16 @@ function formatBody(buffer, contentType) {
 }
 
 function renderAdminPage(items, limit) {
-  const rows = items.map((item) => `
-    <article class="request">
-      <header>
-        <div>
-          <span class="method">${escapeHtml(item.method)}</span>
-          <span class="status">${item.statusCode}</span>
-          <span class="url">${escapeHtml(`${item.protocol}://${item.host}${item.path}`)}</span>
-        </div>
-        <time>${escapeHtml(item.timestamp)}</time>
-      </header>
-      <dl class="summary">
-        <div><dt>IP</dt><dd>${escapeHtml(item.ip)}</dd></div>
-        <div><dt>Duration</dt><dd>${item.durationMs} ms</dd></div>
-        <div><dt>Request Size</dt><dd>${item.requestBody.size} bytes</dd></div>
-        <div><dt>Response Size</dt><dd>${item.responseBody.size} bytes</dd></div>
-      </dl>
-      <details open>
-        <summary>Request headers</summary>
-        <pre>${escapeHtml(JSON.stringify(item.requestHeaders, null, 2))}</pre>
-      </details>
-      <details>
-        <summary>Request body</summary>
-        <pre>${escapeHtml(bodyText(item.requestBody))}</pre>
-      </details>
-      <details>
-        <summary>Response headers</summary>
-        <pre>${escapeHtml(JSON.stringify(item.responseHeaders, null, 2))}</pre>
-      </details>
-      <details>
-        <summary>Response body</summary>
-        <pre>${escapeHtml(bodyText(item.responseBody))}</pre>
-      </details>
-    </article>
-  `).join("");
+  const initialData = JSON.stringify({ requests: items, maxRequests: limit })
+    .replaceAll("<", "\\u003c")
+    .replaceAll(">", "\\u003e")
+    .replaceAll("&", "\\u0026");
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="3">
   <title>HTTP Request Recorder</title>
   <style>
     :root {
@@ -179,16 +148,18 @@ function renderAdminPage(items, limit) {
       margin: 0;
     }
     main {
-      width: min(1180px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 28px 0 48px;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
     }
     .topbar {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: 16px;
-      margin-bottom: 18px;
+      padding: 16px 20px;
+      border-bottom: 1px solid #d9e2ec;
+      background: #fff;
     }
     h1 {
       margin: 0;
@@ -199,73 +170,66 @@ function renderAdminPage(items, limit) {
       color: #52606d;
       font-size: 14px;
     }
+    .layout {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(260px, 38%) minmax(0, 1fr);
+    }
+    .list {
+      min-width: 0;
+      overflow: auto;
+      border-right: 1px solid #d9e2ec;
+      background: #fff;
+    }
     .empty {
-      padding: 28px;
-      border: 1px solid #d9e2ec;
-      background: #fff;
-      border-radius: 8px;
+      padding: 20px;
       color: #52606d;
     }
-    .request {
-      border: 1px solid #d9e2ec;
-      border-radius: 8px;
-      background: #fff;
-      margin-bottom: 14px;
-      overflow: hidden;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-    }
-    .request > header {
-      display: flex;
+    .request-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(92px, 150px) minmax(0, 1fr);
+      gap: 12px;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 14px 16px;
+      padding: 12px 14px;
+      border: 0;
       border-bottom: 1px solid #e4e7eb;
-      background: #fbfcfd;
+      background: #fff;
+      color: inherit;
+      cursor: pointer;
+      text-align: left;
     }
-    .method, .status {
-      display: inline-flex;
-      align-items: center;
-      min-width: 54px;
-      justify-content: center;
-      border-radius: 4px;
-      padding: 3px 7px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12px;
-      font-weight: 700;
+    .request-row:hover {
+      background: #f8fafc;
     }
-    .method {
-      background: #dbeafe;
-      color: #1d4ed8;
+    .request-row.active {
+      background: #e0f2fe;
+      box-shadow: inset 3px 0 0 #0284c7;
     }
-    .status {
-      background: #dcfce7;
-      color: #15803d;
-    }
-    .url {
-      margin-left: 8px;
-      overflow-wrap: anywhere;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 13px;
-    }
-    time {
+    .request-row span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
-      color: #52606d;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 13px;
+    }
+    .detail {
+      min-width: 0;
+      overflow: auto;
+      padding: 18px 20px 36px;
     }
     .summary {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0;
-      margin: 0;
-      border-bottom: 1px solid #e4e7eb;
+      gap: 10px;
+      margin: 0 0 16px;
     }
     .summary div {
-      padding: 12px 16px;
-      border-right: 1px solid #e4e7eb;
-    }
-    .summary div:last-child {
-      border-right: 0;
+      padding: 10px 12px;
+      border: 1px solid #d9e2ec;
+      border-radius: 8px;
+      background: #fff;
     }
     dt {
       color: #52606d;
@@ -278,11 +242,18 @@ function renderAdminPage(items, limit) {
       font-size: 13px;
       overflow-wrap: anywhere;
     }
-    details {
-      border-bottom: 1px solid #e4e7eb;
+    .detail-title {
+      margin: 0 0 14px;
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 15px;
     }
-    details:last-child {
-      border-bottom: 0;
+    details {
+      border: 1px solid #d9e2ec;
+      border-radius: 8px;
+      background: #fff;
+      margin-bottom: 10px;
+      overflow: hidden;
     }
     summary {
       cursor: pointer;
@@ -300,15 +271,24 @@ function renderAdminPage(items, limit) {
       line-height: 1.55;
     }
     @media (max-width: 760px) {
-      .topbar, .request > header {
+      main {
+        height: auto;
+        min-height: 100vh;
+      }
+      .topbar {
         align-items: flex-start;
         flex-direction: column;
       }
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .list {
+        max-height: 40vh;
+        border-right: 0;
+        border-bottom: 1px solid #d9e2ec;
+      }
       .summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      time {
-        white-space: normal;
       }
     }
     @media (prefers-color-scheme: dark) {
@@ -316,19 +296,19 @@ function renderAdminPage(items, limit) {
         background: #0f172a;
         color: #e5e7eb;
       }
-      .meta, time, dt {
+      .meta, dt {
         color: #9aa6b2;
       }
-      .empty, .request {
+      .topbar, .list, .request-row, .summary div, details {
         background: #111827;
         border-color: #334155;
       }
-      .request > header {
+      .request-row:hover {
         background: #1f2937;
-        border-color: #334155;
       }
-      .summary, .summary div, details {
-        border-color: #334155;
+      .request-row.active {
+        background: #0c4a6e;
+        box-shadow: inset 3px 0 0 #38bdf8;
       }
       pre {
         background: #020617;
@@ -340,10 +320,119 @@ function renderAdminPage(items, limit) {
   <main>
     <div class="topbar">
       <h1>HTTP Request Recorder</h1>
-      <div class="meta">${items.length} captured request${items.length === 1 ? "" : "s"}; keeping newest ${limit}. Auto-refreshes every 3s. JSON at <code>/admin.json</code>.</div>
+      <div class="meta"><span id="count">${items.length}</span> captured request${items.length === 1 ? "" : "s"}; keeping newest ${limit}. JSON at <code>/admin.json</code>.</div>
     </div>
-    ${items.length ? rows : '<div class="empty">No requests captured yet.</div>'}
+    <section class="layout">
+      <div id="request-list" class="list"></div>
+      <div id="detail" class="detail"></div>
+    </section>
   </main>
+  <script>
+    const initialData = ${initialData};
+    const state = {
+      requests: initialData.requests,
+      selectedId: initialData.requests[0]?.id || null
+    };
+
+    const listEl = document.getElementById("request-list");
+    const detailEl = document.getElementById("detail");
+    const countEl = document.getElementById("count");
+
+    render();
+    setInterval(refreshRequests, 2000);
+
+    async function refreshRequests() {
+      try {
+        const response = await fetch("/admin.json", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const previousSelection = state.selectedId;
+        state.requests = data.requests;
+        countEl.textContent = data.count;
+
+        if (!state.requests.some((item) => item.id === previousSelection)) {
+          state.selectedId = state.requests[0]?.id || null;
+        }
+
+        render();
+      } catch (_error) {
+      }
+    }
+
+    function render() {
+      renderList();
+      renderDetail();
+    }
+
+    function renderList() {
+      if (!state.requests.length) {
+        listEl.innerHTML = '<div class="empty">No requests captured yet.</div>';
+        return;
+      }
+
+      listEl.innerHTML = state.requests.map((item) => \`
+        <button class="request-row \${item.id === state.selectedId ? "active" : ""}" data-id="\${escapeHtml(item.id)}" type="button">
+          <span title="\${escapeHtml(item.ip)}">\${escapeHtml(item.ip)}</span>
+          <span title="\${escapeHtml(item.path)}">\${escapeHtml(item.path)}</span>
+        </button>
+      \`).join("");
+
+      listEl.querySelectorAll(".request-row").forEach((row) => {
+        row.addEventListener("click", () => {
+          state.selectedId = row.dataset.id;
+          render();
+        });
+      });
+    }
+
+    function renderDetail() {
+      const item = state.requests.find((request) => request.id === state.selectedId);
+
+      if (!item) {
+        detailEl.innerHTML = '<div class="empty">Select a request to view details.</div>';
+        return;
+      }
+
+      detailEl.innerHTML = \`
+        <h2 class="detail-title">\${escapeHtml(item.method)} \${escapeHtml(item.path)}</h2>
+        <dl class="summary">
+          <div><dt>IP</dt><dd>\${escapeHtml(item.ip)}</dd></div>
+          <div><dt>Status</dt><dd>\${item.statusCode}</dd></div>
+          <div><dt>Duration</dt><dd>\${item.durationMs} ms</dd></div>
+          <div><dt>Time</dt><dd>\${escapeHtml(item.timestamp)}</dd></div>
+        </dl>
+        \${detailBlock("Request headers", JSON.stringify(item.requestHeaders, null, 2), true)}
+        \${detailBlock("Request body", bodyText(item.requestBody), false)}
+        \${detailBlock("Response headers", JSON.stringify(item.responseHeaders, null, 2), false)}
+        \${detailBlock("Response body", bodyText(item.responseBody), false)}
+      \`;
+    }
+
+    function detailBlock(title, value, open) {
+      return \`
+        <details \${open ? "open" : ""}>
+          <summary>\${escapeHtml(title)}</summary>
+          <pre>\${escapeHtml(value || "")}</pre>
+        </details>
+      \`;
+    }
+
+    function bodyText(body) {
+      if (!body) return "";
+      if (body.text !== undefined) return body.text;
+      if (body.base64 !== undefined) return \`[\${body.size} bytes binary data, base64]\\n\${body.base64}\`;
+      return "";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+  </script>
 </body>
 </html>`;
 }
