@@ -50,7 +50,7 @@ app.use((req, res, next) => {
       protocol: req.protocol,
       host: req.get("host") || "",
       path: req.originalUrl,
-      ip: req.ip,
+      ip: getDisplayIp(req),
       query: req.query,
       requestHeaders: req.headers,
       requestBody: formatBody(requestBody, req.get("content-type")),
@@ -123,6 +123,16 @@ function formatBody(buffer, contentType) {
     size: buffer.length,
     base64: buffer.toString("base64")
   };
+}
+
+function getDisplayIp(req) {
+  const forwardedFor = req.get("x-forwarded-for");
+
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  return req.ip;
 }
 
 function renderAdminPage(items, limit) {
