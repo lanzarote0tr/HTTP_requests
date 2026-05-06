@@ -347,7 +347,8 @@ function renderAdminPage(items, limit) {
     const initialData = ${initialData};
     const state = {
       requests: initialData.requests,
-      selectedId: initialData.requests[0]?.id || null
+      selectedId: initialData.requests[0]?.id || null,
+      renderedDetailId: null
     };
 
     const listEl = document.getElementById("request-list");
@@ -370,7 +371,11 @@ function renderAdminPage(items, limit) {
           state.selectedId = state.requests[0]?.id || null;
         }
 
-        render();
+        renderList();
+
+        if (state.selectedId !== previousSelection || state.renderedDetailId === null) {
+          renderDetail();
+        }
       } catch (_error) {
       }
     }
@@ -386,6 +391,7 @@ function renderAdminPage(items, limit) {
         return;
       }
 
+      const scrollTop = listEl.scrollTop;
       listEl.innerHTML = state.requests.map((item) => \`
         <button class="request-row \${item.id === state.selectedId ? "active" : ""}" data-id="\${escapeHtml(item.id)}" type="button">
           <span title="\${escapeHtml(item.ip)}">\${escapeHtml(item.ip)}</span>
@@ -396,9 +402,11 @@ function renderAdminPage(items, limit) {
       listEl.querySelectorAll(".request-row").forEach((row) => {
         row.addEventListener("click", () => {
           state.selectedId = row.dataset.id;
-          render();
+          renderList();
+          renderDetail();
         });
       });
+      listEl.scrollTop = scrollTop;
     }
 
     function renderDetail() {
@@ -406,9 +414,11 @@ function renderAdminPage(items, limit) {
 
       if (!item) {
         detailEl.innerHTML = '<div class="empty">Select a request to view details.</div>';
+        state.renderedDetailId = null;
         return;
       }
 
+      state.renderedDetailId = item.id;
       detailEl.innerHTML = \`
         <h2 class="detail-title">\${escapeHtml(item.method)} \${escapeHtml(item.path)}</h2>
         <dl class="summary">
