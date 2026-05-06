@@ -1,7 +1,7 @@
 {
-  "name": "http-request-recorder",
+  "name": "http-webhook",
   "version": "1.0.0",
-  "description": "Simple Express server that records incoming HTTP requests and displays them on an admin dashboard.",
+  "description": "Simple Express webhook receiver that records incoming requests and displays them on an admin dashboard.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

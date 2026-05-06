@@ -1,6 +1,6 @@
-# HTTP Request Recorder
+# HTTP webhook
 
-A simple Express server that records incoming HTTP requests and displays request/response details at `/admin`, similar to a lightweight mitmproxy event list.
+A simple Express webhook receiver that records incoming requests and displays request/response details at `/admin`.
 
 ## Run
 
@@ -9,16 +9,16 @@ npm install
 npm start
 ```
 
-Open `http://localhost:3000/admin` to view captured traffic.
+Open `http://localhost:3000/admin` to view webhook traffic.
 
 ## Docker
 
 ```sh
-docker build -t http-request-recorder .
-docker run --rm -p 3000:3000 http-request-recorder
+docker build -t http-webhook .
+docker run --rm -p 3000:3000 http-webhook
 ```
 
-Open `http://localhost:3000/admin` to view captured traffic.
+Open `http://localhost:3000/admin` to view webhook traffic.
 
 Useful environment variables:
 
@@ -27,7 +27,7 @@ Useful environment variables:
 - `MAX_REQUESTS`: number of newest requests kept in memory, defaults to `500`
 - `BODY_LIMIT`: maximum request body size accepted by Express, defaults to `2mb`
 
-## Test request
+## Test webhook
 
 ```sh
 curl -i -X POST http://localhost:3000/example \

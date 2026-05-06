@@ -88,7 +88,7 @@ app.post("/admin/clear", (_req, res) => {
 app.use((req, res) => {
   res.status(200).json({
     ok: true,
-    message: "Request recorded. Open /admin to inspect captured traffic.",
+    message: "Webhook received. Open /admin to inspect webhook traffic.",
     method: req.method,
     path: req.originalUrl,
     receivedAt: new Date().toISOString()
@@ -96,7 +96,7 @@ app.use((req, res) => {
 });
 
 const server = app.listen(port, host, () => {
-  console.log(`HTTP request recorder listening on http://${host}:${port}`);
+  console.log(`HTTP webhook listening on http://${host}:${port}`);
   console.log(`Admin dashboard: http://${host}:${port}/admin`);
 });
 
@@ -157,7 +157,7 @@ function renderAdminPage(items, limit) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HTTP Request Recorder</title>
+  <title>HTTP webhook</title>
   <style>
     body {
       margin: 0;
@@ -288,7 +288,7 @@ function renderAdminPage(items, limit) {
   <main>
     <div class="topbar">
       <div class="title-group">
-        <h1>HTTP Requests</h1>
+        <h1>HTTP webhook</h1>
         <div class="meta"><span id="count">${items.length}</span> captured request${items.length === 1 ? "" : "s"}.</div>
       </div>
       <button id="clear-button" class="clear-button" type="button">Clear</button>
