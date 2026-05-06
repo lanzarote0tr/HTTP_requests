@@ -35,7 +35,7 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    if (req.path === "/admin" || req.path === "/admin.json") {
+    if (req.path === "/admin" || req.path.startsWith("/admin/")) {
       return;
     }
 
@@ -68,7 +68,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/admin.json", (_req, res) => {
+app.get("/admin/data", (_req, res) => {
   res.json({
     count: requests.length,
     maxRequests,
@@ -159,14 +159,9 @@ function renderAdminPage(items, limit) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>HTTP Request Recorder</title>
   <style>
-    :root {
-      color-scheme: light dark;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f4f6f8;
-      color: #1f2933;
-    }
     body {
       margin: 0;
+      font-family: sans-serif;
     }
     main {
       height: 100vh;
@@ -178,40 +173,26 @@ function renderAdminPage(items, limit) {
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding: 16px 20px;
-      border-bottom: 1px solid #d9e2ec;
-      background: #fff;
+      padding: 12px;
+      border-bottom: 1px solid #ccc;
     }
     .title-group {
       display: flex;
       align-items: baseline;
-      gap: 14px;
+      gap: 12px;
       min-width: 0;
     }
     h1 {
       margin: 0;
-      font-size: 24px;
-      font-weight: 700;
+      font-size: 20px;
       white-space: nowrap;
     }
     .meta {
-      color: #52606d;
       font-size: 14px;
     }
     .clear-button {
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      background: #fff;
-      color: #334155;
       cursor: pointer;
-      font: inherit;
-      font-size: 14px;
-      font-weight: 650;
-      padding: 8px 12px;
       white-space: nowrap;
-    }
-    .clear-button:hover {
-      background: #f8fafc;
     }
     .layout {
       min-height: 0;
@@ -221,97 +202,64 @@ function renderAdminPage(items, limit) {
     .list {
       min-width: 0;
       overflow: auto;
-      border-right: 1px solid #d9e2ec;
-      background: #fff;
+      border-right: 1px solid #ccc;
     }
     .empty {
-      padding: 20px;
-      color: #52606d;
+      padding: 12px;
     }
     .request-row {
       width: 100%;
       display: grid;
       grid-template-columns: minmax(92px, 150px) minmax(0, 1fr);
-      gap: 12px;
+      gap: 8px;
       align-items: center;
-      padding: 12px 14px;
+      padding: 8px;
       border: 0;
-      border-bottom: 1px solid #e4e7eb;
-      background: #fff;
+      border-bottom: 1px solid #ddd;
+      background: transparent;
       color: inherit;
       cursor: pointer;
       text-align: left;
     }
-    .request-row:hover {
-      background: #f8fafc;
-    }
     .request-row.active {
-      background: #e0f2fe;
-      box-shadow: inset 3px 0 0 #0284c7;
+      background: #ddd;
     }
     .request-row span {
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 13px;
+      font-family: monospace;
     }
     .detail {
       min-width: 0;
       overflow: auto;
-      padding: 18px 20px 36px;
+      padding: 12px;
     }
     .summary {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin: 0 0 16px;
-    }
-    .summary div {
-      padding: 10px 12px;
-      border: 1px solid #d9e2ec;
-      border-radius: 8px;
-      background: #fff;
+      gap: 8px;
     }
     dt {
-      color: #52606d;
-      font-size: 12px;
-      margin-bottom: 4px;
+      font-weight: bold;
     }
     dd {
       margin: 0;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 13px;
       overflow-wrap: anywhere;
     }
     .detail-title {
-      margin: 0 0 14px;
+      margin: 0 0 12px;
       overflow-wrap: anywhere;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 15px;
     }
     details {
-      border: 1px solid #d9e2ec;
-      border-radius: 8px;
-      background: #fff;
-      margin-bottom: 10px;
-      overflow: hidden;
+      margin: 8px 0;
     }
     summary {
       cursor: pointer;
-      padding: 11px 16px;
-      font-weight: 650;
-      font-size: 14px;
     }
     pre {
-      margin: 0;
-      padding: 14px 16px 18px;
       overflow: auto;
-      background: #101828;
-      color: #e5e7eb;
-      font-size: 12px;
-      line-height: 1.55;
     }
     @media (max-width: 760px) {
       main {
@@ -328,39 +276,10 @@ function renderAdminPage(items, limit) {
       .list {
         max-height: 40vh;
         border-right: 0;
-        border-bottom: 1px solid #d9e2ec;
+        border-bottom: 1px solid #ccc;
       }
       .summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        background: #0f172a;
-        color: #e5e7eb;
-      }
-      .meta, dt {
-        color: #9aa6b2;
-      }
-      .topbar, .list, .request-row, .summary div, details, .clear-button {
-        background: #111827;
-        border-color: #334155;
-      }
-      .clear-button {
-        color: #e5e7eb;
-      }
-      .clear-button:hover {
-        background: #1f2937;
-      }
-      .request-row:hover {
-        background: #1f2937;
-      }
-      .request-row.active {
-        background: #0c4a6e;
-        box-shadow: inset 3px 0 0 #38bdf8;
-      }
-      pre {
-        background: #020617;
       }
     }
   </style>
@@ -369,8 +288,8 @@ function renderAdminPage(items, limit) {
   <main>
     <div class="topbar">
       <div class="title-group">
-        <h1>HTTP Request Recorder</h1>
-        <div class="meta"><span id="count">${items.length}</span> captured request${items.length === 1 ? "" : "s"}; keeping newest ${limit}. JSON at <code>/admin.json</code>.</div>
+        <h1>HTTP Requests</h1>
+        <div class="meta"><span id="count">${items.length}</span> captured request${items.length === 1 ? "" : "s"}.</div>
       </div>
       <button id="clear-button" class="clear-button" type="button">Clear</button>
     </div>
@@ -416,7 +335,7 @@ function renderAdminPage(items, limit) {
 
     async function refreshRequests() {
       try {
-        const response = await fetch("/admin.json", { cache: "no-store" });
+        const response = await fetch("/admin/data", { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
         state.requests = data.requests;
