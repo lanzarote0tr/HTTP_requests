@@ -15,6 +15,17 @@ app.use(express.raw({
 }));
 
 app.use((req, res, next) => {
+  if (String(req.get("cf-ipcountry") || "").toUpperCase() !== "KR") {
+    return res.status(403).json({
+      ok: false,
+      message: "Rejected: CF-IPCountry must be KR."
+    });
+  }
+
+  return next();
+});
+
+app.use((req, res, next) => {
   const startedAt = process.hrtime.bigint();
   const chunks = [];
   const originalWrite = res.write;
@@ -35,7 +46,7 @@ app.use((req, res, next) => {
   };
 
   res.on("finish", () => {
-    if (req.path === "/admin" || req.path.startsWith("/admin/")) {
+    if (isAdminRoute(req)) {
       return;
     }
 
@@ -128,6 +139,10 @@ function formatBody(buffer, contentType) {
     size: buffer.length,
     base64: buffer.toString("base64")
   };
+}
+
+function isAdminRoute(req) {
+  return req.path === "/admin" || req.path.startsWith("/admin/");
 }
 
 function getDisplayIp(req) {
