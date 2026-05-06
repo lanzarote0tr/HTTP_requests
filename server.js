@@ -80,6 +80,11 @@ app.get("/admin", (_req, res) => {
   res.type("html").send(renderAdminPage(requests, maxRequests));
 });
 
+app.post("/admin/clear", (_req, res) => {
+  requests.length = 0;
+  res.status(204).end();
+});
+
 app.use((req, res) => {
   res.status(200).json({
     ok: true,
@@ -170,21 +175,43 @@ function renderAdminPage(items, limit) {
     }
     .topbar {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       gap: 16px;
       padding: 16px 20px;
       border-bottom: 1px solid #d9e2ec;
       background: #fff;
     }
+    .title-group {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      min-width: 0;
+    }
     h1 {
       margin: 0;
       font-size: 24px;
       font-weight: 700;
+      white-space: nowrap;
     }
     .meta {
       color: #52606d;
       font-size: 14px;
+    }
+    .clear-button {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 650;
+      padding: 8px 12px;
+      white-space: nowrap;
+    }
+    .clear-button:hover {
+      background: #f8fafc;
     }
     .layout {
       min-height: 0;
@@ -315,9 +342,15 @@ function renderAdminPage(items, limit) {
       .meta, dt {
         color: #9aa6b2;
       }
-      .topbar, .list, .request-row, .summary div, details {
+      .topbar, .list, .request-row, .summary div, details, .clear-button {
         background: #111827;
         border-color: #334155;
+      }
+      .clear-button {
+        color: #e5e7eb;
+      }
+      .clear-button:hover {
+        background: #1f2937;
       }
       .request-row:hover {
         background: #1f2937;
@@ -335,8 +368,11 @@ function renderAdminPage(items, limit) {
 <body>
   <main>
     <div class="topbar">
-      <h1>HTTP Request Recorder</h1>
-      <div class="meta"><span id="count">${items.length}</span> captured request${items.length === 1 ? "" : "s"}; keeping newest ${limit}. JSON at <code>/admin.json</code>.</div>
+      <div class="title-group">
+        <h1>HTTP Request Recorder</h1>
+        <div class="meta"><span id="count">${items.length}</span> captured request${items.length === 1 ? "" : "s"}; keeping newest ${limit}. JSON at <code>/admin.json</code>.</div>
+      </div>
+      <button id="clear-button" class="clear-button" type="button">Clear</button>
     </div>
     <section class="layout">
       <div id="request-list" class="list"></div>
@@ -354,9 +390,29 @@ function renderAdminPage(items, limit) {
     const listEl = document.getElementById("request-list");
     const detailEl = document.getElementById("detail");
     const countEl = document.getElementById("count");
+    const clearButtonEl = document.getElementById("clear-button");
 
     render();
+    clearButtonEl.addEventListener("click", clearRequests);
     setInterval(refreshRequests, 2000);
+
+    async function clearRequests() {
+      clearButtonEl.disabled = true;
+
+      try {
+        const response = await fetch("/admin/clear", { method: "POST" });
+        if (!response.ok) return;
+
+        state.requests = [];
+        state.selectedId = null;
+        state.renderedDetailId = null;
+        countEl.textContent = "0";
+        listEl.dataset.html = "";
+        render();
+      } finally {
+        clearButtonEl.disabled = false;
+      }
+    }
 
     async function refreshRequests() {
       try {
