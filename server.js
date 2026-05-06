@@ -347,7 +347,7 @@ function renderAdminPage(items, limit) {
     const initialData = ${initialData};
     const state = {
       requests: initialData.requests,
-      selectedId: initialData.requests[0]?.id || null,
+      selectedId: null,
       renderedDetailId: null
     };
 
@@ -363,19 +363,16 @@ function renderAdminPage(items, limit) {
         const response = await fetch("/admin.json", { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
-        const previousSelection = state.selectedId;
         state.requests = data.requests;
         countEl.textContent = data.count;
 
-        if (!state.requests.some((item) => item.id === previousSelection)) {
-          state.selectedId = state.requests[0]?.id || null;
+        if (state.selectedId && !state.requests.some((item) => item.id === state.selectedId)) {
+          state.selectedId = null;
+          state.renderedDetailId = null;
+          detailEl.innerHTML = '<div class="empty">Select a request to view details.</div>';
         }
 
         renderList();
-
-        if (state.selectedId !== previousSelection || state.renderedDetailId === null) {
-          renderDetail();
-        }
       } catch (_error) {
       }
     }
@@ -392,21 +389,34 @@ function renderAdminPage(items, limit) {
       }
 
       const scrollTop = listEl.scrollTop;
-      listEl.innerHTML = state.requests.map((item) => \`
-        <button class="request-row \${item.id === state.selectedId ? "active" : ""}" data-id="\${escapeHtml(item.id)}" type="button">
+      const nextListHtml = state.requests.map((item) => \`
+        <button class="request-row" data-id="\${escapeHtml(item.id)}" type="button">
           <span title="\${escapeHtml(item.ip)}">\${escapeHtml(item.ip)}</span>
           <span title="\${escapeHtml(item.path)}">\${escapeHtml(item.path)}</span>
         </button>
       \`).join("");
 
-      listEl.querySelectorAll(".request-row").forEach((row) => {
-        row.addEventListener("click", () => {
-          state.selectedId = row.dataset.id;
-          renderList();
-          renderDetail();
+      if (listEl.dataset.html !== nextListHtml) {
+        listEl.innerHTML = nextListHtml;
+        listEl.dataset.html = nextListHtml;
+
+        listEl.querySelectorAll(".request-row").forEach((row) => {
+          row.addEventListener("click", () => {
+            state.selectedId = row.dataset.id;
+            updateActiveRow();
+            renderDetail();
+          });
         });
-      });
+      }
+
+      updateActiveRow();
       listEl.scrollTop = scrollTop;
+    }
+
+    function updateActiveRow() {
+      listEl.querySelectorAll(".request-row").forEach((row) => {
+        row.classList.toggle("active", row.dataset.id === state.selectedId);
+      });
     }
 
     function renderDetail() {
