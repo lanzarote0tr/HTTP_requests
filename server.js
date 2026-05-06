@@ -126,6 +126,12 @@ function formatBody(buffer, contentType) {
 }
 
 function getDisplayIp(req) {
+  const cloudflareIp = req.get("cf-connecting-ip");
+
+  if (cloudflareIp) {
+    return cloudflareIp.trim();
+  }
+
   const forwardedFor = req.get("x-forwarded-for");
 
   if (forwardedFor) {
